@@ -1,0 +1,39 @@
+// انسخي هذا الكود كامل والصقيه في: ملف قوقل شيت ← الإضافات (Extensions) ← Apps Script
+
+// لا تضغطين «تشغيل» على doPost، هذي تشتغل لحالها لما يوصل تقييم من الصفحة.
+// للتجربة: اختاري testRow من القائمة فوق واضغطي «تشغيل».
+
+function doPost(e) {
+  if (!e || !e.postData) return ContentService.createTextOutput("no data");
+  addRow(JSON.parse(e.postData.contents));
+  return ContentService.createTextOutput("ok");
+}
+
+function testRow() {
+  addRow({
+    lesson: "تجربة", teacher: "هدى الدهّاس", role: "زائرة", name: "",
+    scores: [{ name: "وضوح أهداف الدرس", value: 5 }, { name: "تفاعل الطالبات ومشاركتهن", value: 4 },
+             { name: "توظيف التقنية والذكاء الاصطناعي", value: 5 }, { name: "إدارة الوقت والصف", value: 4 }],
+    average: 4.5, comment: "صف تجريبي، احذفيه"
+  });
+}
+
+function addRow(d) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var scores = d.scores || [];
+
+  if (sheet.getLastRow() === 0) {
+    var head = ["الوقت", "الدرس", "المعلمة", "المقيّمة", "الاسم"];
+    scores.forEach(function (s) { head.push(s.name); });
+    head.push("التقدير العام", "ملاحظات");
+    sheet.appendRow(head);
+    sheet.getRange(1, 1, 1, head.length).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+    sheet.setRightToLeft(true);
+  }
+
+  var row = [new Date(), d.lesson, d.teacher, d.role, d.name];
+  scores.forEach(function (s) { row.push(s.value); });
+  row.push(d.average, d.comment);
+  sheet.appendRow(row);
+}

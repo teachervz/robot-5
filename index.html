@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07061a">
+<title>روبوت درس الذكاء الاصطناعي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap">
+
+<script>
+/* =====================================================================
+   الإعدادات — عدّلي هنا فقط
+   ===================================================================== */
+window.LESSON = {
+  school: "",
+  subject: "التقنية الرقمية • الصف الأول الثانوي",
+  lessonTitle: "الذكاء الاصطناعي",
+  lessonSubtitle: "حين تتعلّم الآلة",
+
+  // السطر اللي تحت اسم المعلمة في الصفحة الرئيسية
+  homeSubtitle: "روبوت الصف الخامس",
+
+  // المعلمة اللي تشرح الدرس
+  teacherName: "رحاب الحربي",
+
+  // اسم الروبوت
+  robotName: "ذكي",
+
+  // رقم واتساب المعلمة لاستلام التقييم، بالصيغة الدولية بدون + (مثال "966500000000")
+  // اتركيه فاضي "" لو ما تبين زر واتساب
+  whatsapp: "",
+
+  // رابط Google Apps Script عشان يوصل كل تقييم لملف قوقل شيت (الطريقة في اقرأني.txt)
+  // اتركيه فاضي "" لو ما تبين ربط
+  sheetURL: "https://script.google.com/macros/s/AKfycbzpbhI2hmXfnxi0FC470NIB4-jMbomvymcUDsg_m8fsrks9YBXVH8daU7o1pOTdKKMt9w/exec",
+
+  // كلام الروبوت عند الترحيب (سطر لكل فقاعة)
+  welcome: [
+    "أهلاً وسهلاً! أنا {robot}، روبوت درس اليوم.",
+    "حيّاكم الله ونوّرتونا.",
+    "معكم اليوم درس {lesson} مع المعلمة {teacher}.",
+    "بتشوفون كيف تتعلّم الآلة من البيانات، مثل ما نتعلّم نحن من الأمثلة.",
+    "استمتعوا بالدرس، وفي نهايته اضغطوا «قيّمي الدرس» وأنا أنتظركم!"
+  ],
+
+  // صوت الترحيب (ملف بجانب الصفحة). اتركيه "" عشان يرجع لصوت الجوال
+  voiceFile: "voice.mp3",
+  // نص الصوت يظهر كترجمة في الفقاعة (اختياري)
+  voiceCaption: "",
+  // الكلام اللي يظهر بعد ما يخلص الصوت
+  afterVoice: "استمتعوا بالدرس، وفي نهايته اضغطوا «قيّمي الدرس» وأنا أنتظركم!",
+
+  // كلام الروبوت بعد التقييم
+  thanks: "شكراً على تقييمكم! رأيكم يساعدنا نطوّر دروسنا.",
+
+  // من تقيّم الدرس
+  // اختيارات جاهزة للمقيّمة (اتركيها فاضية [] عشان تكتب اسمها بس)
+  raters: [],
+
+  // بنود التقييم
+  criteria: [
+    "وضوح أهداف الدرس",
+    "تفاعل الطالبات ومشاركتهن",
+    "توظيف التقنية والذكاء الاصطناعي",
+    "إدارة الوقت والصف"
+  ]
+};
+</script>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+
+<style>
+/* Layout: night-sky stage. Intro = 3D robot in a glowing orb with orbiting icons,
+   title stack beside/below. AR = live camera with floating glass HUD.
+   Rating = dark bottom sheet. Deliberately single dark look (navy / black / violet). */
+:root {
+  --bg0: #07061a;
+  --bg1: #120f33;
+  --glass: rgba(255, 255, 255, .06);
+  --stroke: rgba(176, 164, 255, .22);
+  --text: #f2f0ff;
+  --muted: #b3afd8;
+  --violet: #7c5cff;
+  --violet-hi: #a48bff;
+  --pink: #e57ad3;
+  --sky: #8fd3ff;
+  --gold: #ffc857;
+  --danger: #ff8a8a;
+  --display: "Alexandria", "Tajawal", "Segoe UI", Tahoma, sans-serif;
+  --body: "Tajawal", "Segoe UI", Tahoma, Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg0); color: var(--text);
+  font-family: var(--body); font-size: 17px; line-height: 1.6;
+  overflow: hidden; -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+button { font: inherit; cursor: pointer; color: inherit; }
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+
+.sky {
+  background:
+    radial-gradient(60% 45% at 85% 10%, rgba(124, 92, 255, .35), transparent 70%),
+    radial-gradient(55% 40% at 10% 85%, rgba(229, 122, 211, .18), transparent 70%),
+    radial-gradient(50% 40% at 0% 30%, rgba(143, 211, 255, .12), transparent 70%),
+    linear-gradient(160deg, var(--bg1), var(--bg0) 60%);
+}
+.grad-text {
+  background: linear-gradient(270deg, var(--pink), var(--violet-hi) 55%, var(--sky));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ---------- buttons & chips ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  border: 0; border-radius: 16px; padding: 15px 22px;
+  font-family: var(--display); font-weight: 700; font-size: 18px; color: #fff;
+  background: linear-gradient(270deg, #8b6bff, #5b4bff);
+  box-shadow: 0 10px 30px rgba(124, 92, 255, .45), inset 0 1px 0 rgba(255,255,255,.25);
+  transition: transform .12s ease;
+}
+.btn:active { transform: translateY(2px) scale(.99); }
+.btn.ghost { background: var(--glass); box-shadow: inset 0 0 0 1.5px var(--stroke); }
+.btn.gold { background: linear-gradient(270deg, #ffd27a, #f4a93b); color: #1b1240; box-shadow: 0 10px 26px rgba(244,169,59,.3); }
+.btn.small { padding: 10px 16px; font-size: 15px; border-radius: 13px; }
+.btn svg { width: 20px; height: 20px; flex: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 14px;
+  background: var(--glass); box-shadow: inset 0 0 0 1.5px var(--stroke); color: var(--text);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.chip svg { width: 16px; height: 16px; color: var(--violet-hi); flex: none; }
+
+/* ---------- intro ---------- */
+#intro {
+  position: fixed; inset: 0; z-index: 30; overflow-y: auto;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+#net { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.intro-in {
+  position: relative; min-height: 100%;
+  max-width: 980px; margin: 0 auto;
+  padding-block: 18px 26px;
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 16px; align-content: center;
+}
+.school { justify-self: center; }
+@media (min-width: 820px) {
+  .intro-in { grid-template-columns: 1fr 1fr; align-items: center; column-gap: 40px; }
+  .school { grid-column: 1 / -1; }
+}
+.orbit {
+  --size: min(80vw, 360px);
+  width: var(--size); height: var(--size); max-width: 100%;
+  justify-self: center; position: relative;
+}
+.orbit .ring {
+  position: absolute; inset: 6%; border-radius: 50%;
+  border: 2px dashed rgba(143, 211, 255, .45);
+  animation: spin 60s linear infinite;
+}
+.orbit .ico {
+  position: absolute; left: 50%; top: 50%; width: 15%; aspect-ratio: 1; margin: -7.5% 0 0 -7.5%;
+  border-radius: 50%; display: grid; place-items: center;
+  background: #0d0b28; box-shadow: inset 0 0 0 1.5px rgba(143,211,255,.5), 0 0 18px rgba(124,92,255,.35);
+  transform: rotate(var(--a)) translate(calc(var(--size) * .44)) rotate(calc(-1 * var(--a)));
+}
+.orbit .ico svg { width: 52%; height: 52%; color: var(--sky); animation: spin 60s linear infinite reverse; }
+.orbit .orb {
+  position: absolute; inset: 21%; border-radius: 50%;
+  background: radial-gradient(circle at 40% 32%, #ffffff, #ece6ff 42%, #b9a6ff 78%, #8d74ff);
+  box-shadow: 0 0 0 10px rgba(124,92,255,.18), 0 0 60px 10px rgba(124,92,255,.55);
+}
+#introCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.copy { display: grid; gap: 14px; }
+.copy .subject { justify-self: start; }
+.copy h1 {
+  font-family: var(--display); font-weight: 900; margin: 0;
+  font-size: clamp(44px, 13vw, 84px); line-height: 1.12; text-wrap: balance;
+  padding-bottom: .32em; margin-bottom: -.24em;
+}
+.copy .sub { font-family: var(--display); font-weight: 500; font-size: clamp(19px, 5vw, 24px); margin: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.copy .row2 { display: grid; gap: 10px; }
+.note { font-size: 14px; color: var(--muted); margin: 0; }
+.note.err { color: var(--danger); }
+
+/* ---------- loading ---------- */
+#loading { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; text-align: center; padding-left: 20px; padding-right: 20px; }
+#loading .box { display: grid; gap: 14px; justify-items: center; }
+#loading strong { font-family: var(--display); font-size: 24px; }
+.spinner { width: 54px; height: 54px; border-radius: 50%; border: 4px solid rgba(255,255,255,.15); border-top-color: var(--violet-hi); animation: spin 1s linear infinite; }
+
+/* ---------- AR ---------- */
+#stage { position: fixed; inset: 0; }
+#hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+}
+.topbar > * { pointer-events: auto; }
+.topbar .chip { background: rgba(12, 10, 36, .65); min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tools { display: flex; gap: 8px; flex: none; }
+.iconbtn {
+  width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: rgba(12, 10, 36, .65); box-shadow: inset 0 0 0 1.5px var(--stroke);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.iconbtn svg { width: 22px; height: 22px; }
+.iconbtn[aria-pressed="false"] { opacity: .55; }
+#talk {
+  position: absolute; left: 0; right: 0; bottom: 0; pointer-events: auto;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+}
+.bubble {
+  max-width: 560px; margin: 0 auto;
+  background: rgba(16, 13, 44, .84); border-radius: 22px;
+  box-shadow: inset 0 0 0 1.5px var(--stroke), 0 16px 40px rgba(0,0,0,.45);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  padding: 14px 16px 12px; display: grid; gap: 10px;
+}
+.who { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 700; font-size: 15px; }
+.who b { width: 9px; height: 9px; border-radius: 50%; background: var(--sky); box-shadow: 0 0 10px var(--sky); }
+#talkText { margin: 0; font-size: 19px; font-weight: 500; line-height: 1.7; min-height: 3.4em; }
+.bubble .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dots { display: flex; gap: 5px; }
+.wave { display: flex; align-items: center; gap: 5px; height: 3.4em; }
+.wave i { width: 6px; height: 20%; border-radius: 4px; background: linear-gradient(var(--pink), var(--violet-hi)); transition: height .08s linear; }
+.bubble .acts { display: flex; gap: 8px; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.2); }
+.dots i.on { background: var(--violet-hi); box-shadow: 0 0 8px var(--violet-hi); }
+
+/* ---------- rating ---------- */
+#rate { position: fixed; inset: 0; z-index: 35; background: rgba(4, 3, 16, .6); display: flex; align-items: flex-end; justify-content: center; }
+#rate .sheet {
+  width: 100%; max-width: 600px; max-height: 92%; overflow-y: auto; overscroll-behavior: contain;
+  background: linear-gradient(180deg, #1a1645, #100d2c); border-radius: 26px 26px 0 0;
+  box-shadow: inset 0 1.5px 0 var(--stroke);
+  padding-block: 10px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 16px; animation: up .32s cubic-bezier(.2,.9,.3,1.1);
+}
+@keyframes up { from { transform: translateY(40px); opacity: 0; } }
+.grab { width: 44px; height: 5px; border-radius: 9px; background: rgba(255,255,255,.2); justify-self: center; }
+.sheet h2 { font-family: var(--display); font-weight: 800; font-size: 26px; margin: 0; line-height: 1.3; }
+.sheet .lead { margin: -10px 0 0; color: var(--muted); font-size: 15px; }
+.field { display: grid; gap: 8px; }
+.label { font-weight: 800; font-size: 16px; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { border: 0; border-radius: 12px; padding: 9px 14px; font-weight: 700; font-size: 15px; background: var(--glass); box-shadow: inset 0 0 0 1.5px var(--stroke); }
+.seg button[aria-pressed="true"] { background: linear-gradient(270deg, #8b6bff, #5b4bff); box-shadow: none; }
+.crit { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 12px; background: var(--glass); border-radius: 16px; padding: 12px 14px; box-shadow: inset 0 0 0 1px var(--stroke); }
+.crit .name { font-weight: 700; min-width: 0; }
+.stars { display: flex; gap: 2px; direction: ltr; }
+.stars button { width: 38px; height: 38px; border: 0; background: none; padding: 3px; color: rgba(255,255,255,.18); transition: transform .12s ease, color .12s ease; }
+.stars button.on { color: var(--gold); filter: drop-shadow(0 0 6px rgba(255,200,87,.5)); }
+.stars button:active { transform: scale(.85); }
+.stars svg { width: 100%; height: 100%; display: block; }
+@media (max-width: 400px) { .crit { grid-template-columns: 1fr; } .stars { justify-content: flex-end; } }
+textarea, input[type="text"] {
+  width: 100%; border: 0; border-radius: 14px; padding: 12px 14px;
+  font: inherit; font-size: 16px; color: var(--text); background: rgba(255,255,255,.05);
+  box-shadow: inset 0 0 0 1.5px var(--stroke); resize: vertical;
+}
+textarea::placeholder, input::placeholder { color: rgba(179,175,216,.7); }
+.sheet .actions { display: flex; flex-wrap: wrap; gap: 10px; position: sticky; bottom: -20px; padding-block: 8px; background: #100d2c; }
+.sheet .actions .btn { flex: 1 1 180px; }
+.err { color: var(--danger); font-weight: 700; font-size: 15px; margin: 0; }
+.result { background: var(--glass); border-radius: 18px; padding: 16px; box-shadow: inset 0 0 0 1px var(--stroke); display: grid; gap: 6px; }
+.score { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.score b { font-family: var(--display); font-weight: 900; font-size: 48px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.result ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.result li { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+.result li span:last-child { color: var(--gold); letter-spacing: 2px; direction: ltr; white-space: nowrap; }
+.result p { margin: 6px 0 0; color: var(--muted); }
+
+#toast {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translateX(-50%);
+  z-index: 40; background: #241f5c; padding: 8px 16px; border-radius: 999px; font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px var(--stroke), 0 6px 20px rgba(0,0,0,.35); white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .orbit .ring, .orbit .ico svg, #rate .sheet, .spinner { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="stage" class="sky"></div>
+
+<!-- intro -->
+<section id="intro" class="sky" aria-labelledby="introTitle">
+  <canvas id="net" aria-hidden="true"></canvas>
+  <div class="intro-in">
+    <span class="chip school" id="schoolChip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.2 3 5 3s5-1.5 5-3v-4.5"/></svg>
+      <span id="schoolName"></span>
+    </span>
+
+    <div class="orbit">
+      <div class="ring" aria-hidden="true">
+        <span class="ico" style="--a:-90deg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></span>
+        <span class="ico" style="--a:-30deg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></svg></span>
+        <span class="ico" style="--a:30deg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg></span>
+        <span class="ico" style="--a:90deg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
+        <span class="ico" style="--a:150deg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16l1.6-5.2A2 2 0 0 1 8.5 9.4h7a2 2 0 0 1 1.9 1.4L19 16"/><rect x="3.5" y="16" width="17" height="3.5" rx="1.2"/><circle cx="7.5" cy="19.5" r="1.2"/><circle cx="16.5" cy="19.5" r="1.2"/></svg></span>
+        <span class="ico" style="--a:210deg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="7" r="2"/><circle cx="5" cy="17" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="7" r="2"/><circle cx="19" cy="17" r="2"/><path d="M7 7.8l3.2 3M7 16.2l3.2-3M13.8 11l3.4-3M13.8 13l3.4 3"/></svg></span>
+      </div>
+      <div class="orb" aria-hidden="true"></div>
+      <canvas id="introCanvas" aria-label="الروبوت ذكي يلوّح بيده"></canvas>
+    </div>
+
+    <div class="copy">
+      <span class="chip subject" id="subjectChip"></span>
+      <h1 id="introTitle" class="grad-text"></h1>
+      <p class="sub" id="introSub"></p>
+      <div class="meta">
+        <span class="chip" id="teacherWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span id="teacherChip"></span></span>
+      </div>
+      <div class="row2">
+        <button class="btn" id="startBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
+          ابدئي التجربة
+        </button>
+        <button class="btn ghost" id="rateDirect" type="button">تقييم الدرس</button>
+      </div>
+      <p class="note" id="introNote">اضغطي «ابدئي التجربة» واسمحي بالكاميرا، ويطلع لك الروبوت في المكان ويرحّب فيك.</p>
+    </div>
+  </div>
+</section>
+
+<!-- loading -->
+<div id="loading" class="sky" hidden role="status" aria-live="polite">
+  <div class="box"><div class="spinner"></div><strong>نفتح الكاميرا…</strong><span class="note">اسمحي باستخدام الكاميرا والحركة لو طلب منك</span></div>
+</div>
+
+<!-- AR HUD -->
+<div id="hud" hidden>
+  <div class="topbar">
+    <div class="chip" id="hudTitle"></div>
+    <div class="tools">
+      <button class="iconbtn" id="soundBtn" type="button" aria-pressed="true" aria-label="صوت الروبوت">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+      </button>
+      <button class="iconbtn" id="rateOpen" type="button" aria-label="تقييم الدرس">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="talk" hidden>
+    <div class="bubble" role="status" aria-live="polite">
+      <div class="who"><b></b><span id="robotLabel"></span></div>
+      <p id="talkText"></p>
+      <div class="wave" id="wave" hidden aria-label="ذكي يتكلم"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="row">
+        <div class="dots" id="dots"></div>
+        <div class="acts">
+          <button class="btn small ghost" id="replayBtn" type="button" hidden>إعادة الترحيب</button>
+          <button class="btn small" id="nextBtn" type="button">التالي</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- rating -->
+<div id="rate" hidden role="dialog" aria-modal="true" aria-labelledby="rateTitle">
+  <div class="sheet" id="rateForm">
+    <div class="grab"></div>
+    <h2 id="rateTitle">تقييم الدرس</h2>
+    <p class="lead" id="rateSub"></p>
+    <div class="field">
+      <span class="label" id="roleLabel">المقيّمة</span>
+      <div class="seg" id="roleSeg" role="group" aria-labelledby="roleLabel"></div>
+      <input type="text" id="raterName" placeholder="اسم آخر (اختياري)" autocomplete="name">
+    </div>
+    <div class="field" id="critList"></div>
+    <div class="field">
+      <label class="label" for="comment">ملاحظات واقتراحات</label>
+      <textarea id="comment" rows="3" placeholder="وش عجبك؟ وش تقترحين؟"></textarea>
+    </div>
+    <p class="err" id="rateErr" hidden>قيّمي كل البنود بالنجوم قبل الإرسال.</p>
+    <div class="actions">
+      <button class="btn" id="submitRate" type="button">إرسال التقييم</button>
+      <button class="btn ghost" id="closeRate" type="button">رجوع</button>
+    </div>
+  </div>
+  <div class="sheet" id="rateDone" hidden>
+    <div class="grab"></div>
+    <h2>شكراً لك!</h2>
+    <div class="result" id="resultCard"></div>
+    <div class="actions">
+      <button class="btn gold" id="waBtn" type="button" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>
+        أرسليه للمعلمة واتساب
+      </button>
+      <button class="btn ghost" id="copyBtn" type="button">نسخ التقييم</button>
+      <button class="btn ghost" id="backAR" type="button">رجوع</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script type="module">
+import * as THREE from "three";
+
+const CFG = window.LESSON;
+const $ = (id) => document.getElementById(id);
+const fill = (s) => s.replaceAll("{robot}", CFG.robotName).replaceAll("{lesson}", CFG.lessonTitle).replaceAll("{teacher}", CFG.teacherName || "");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- text ---------- */
+$("schoolName").textContent = CFG.school;
+$("schoolChip").hidden = !CFG.school;
+$("subjectChip").textContent = CFG.subject;
+$("subjectChip").hidden = !CFG.subject;
+$("introTitle").textContent = "أ. " + CFG.teacherName;
+$("introSub").textContent = CFG.homeSubtitle;
+$("teacherWrap").hidden = true;
+$("hudTitle").textContent = CFG.school || CFG.lessonTitle;
+$("robotLabel").textContent = CFG.robotName;
+document.title = "روبوت درس " + CFG.lessonTitle;
+
+/* ---------- network background ---------- */
+(function drawNet() {
+  const c = $("net"), ctx = c.getContext("2d");
+  function draw() {
+    const w = innerWidth, h = innerHeight, dpr = Math.min(2, devicePixelRatio);
+    c.width = w * dpr; c.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const pts = Array.from({ length: Math.round(w * h / 9000) }, () => [rnd() * w, rnd() * h]);
+    ctx.lineWidth = 1;
+    pts.forEach((p, i) => pts.slice(i + 1).forEach((q) => {
+      const d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+      if (d < 120) { ctx.strokeStyle = `rgba(164,139,255,${.16 * (1 - d / 120)})`; ctx.beginPath(); ctx.moveTo(...p); ctx.lineTo(...q); ctx.stroke(); }
+    }));
+    pts.forEach(([x, y]) => { ctx.fillStyle = "rgba(200,190,255,.55)"; ctx.beginPath(); ctx.arc(x, y, 1.4, 0, 7); ctx.fill(); });
+  }
+  draw(); addEventListener("resize", draw);
+})();
+
+/* =====================================================================
+   Robot model (violet / navy palette)
+   ===================================================================== */
+function buildRobot() {
+  const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .38, metalness: .1, ...extra });
+  const shell = mat(0xf1eeff), violet = mat(0x6d4dff, { roughness: .3 }), navy = mat(0x14113a, { roughness: .22, metalness: .35 });
+  const eyeGlow = new THREE.MeshStandardMaterial({ color: 0xbfe8ff, emissive: 0x5cc3ff, emissiveIntensity: 1.6 });
+  const pinkGlow = new THREE.MeshStandardMaterial({ color: 0xffb3ee, emissive: 0xe057c8, emissiveIntensity: 1.3 });
+  const cast = (m) => { m.castShadow = true; return m; };
+
+  const root = new THREE.Group();
+  const bodyPivot = new THREE.Group(); root.add(bodyPivot);
+
+  const base = cast(new THREE.Mesh(new THREE.CylinderGeometry(.2, .24, .07, 48), navy));
+  base.position.y = .035; root.add(base);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.215, .012, 12, 48), pinkGlow);
+  ring.rotation.x = Math.PI / 2; ring.position.y = .072; root.add(ring);
+
+  const body = cast(new THREE.Mesh(new THREE.CapsuleGeometry(.16, .17, 10, 32), shell));
+  body.position.y = .32; bodyPivot.add(body);
+  const belt = cast(new THREE.Mesh(new THREE.CylinderGeometry(.163, .163, .04, 40), violet));
+  belt.position.y = .2; bodyPivot.add(belt);
+  const chest = new THREE.Mesh(new THREE.CircleGeometry(.06, 40), navy);
+  chest.position.set(0, .35, .158); bodyPivot.add(chest);
+  const core = new THREE.Mesh(new THREE.RingGeometry(.025, .042, 40), pinkGlow);
+  core.position.set(0, .35, .16); bodyPivot.add(core);
+
+  const neck = cast(new THREE.Mesh(new THREE.CylinderGeometry(.045, .055, .07, 24), navy));
+  neck.position.y = .54; bodyPivot.add(neck);
+  const head = new THREE.Group(); head.position.y = .69; bodyPivot.add(head);
+  const skull = cast(new THREE.Mesh(new THREE.SphereGeometry(.17, 40, 32), shell));
+  skull.scale.set(1.32, .98, 1.08); head.add(skull);
+
+  const vs = new THREE.Shape(); const vw = .32, vh = .15, r = .065;
+  vs.moveTo(-vw / 2 + r, -vh / 2);
+  vs.lineTo(vw / 2 - r, -vh / 2); vs.quadraticCurveTo(vw / 2, -vh / 2, vw / 2, -vh / 2 + r);
+  vs.lineTo(vw / 2, vh / 2 - r); vs.quadraticCurveTo(vw / 2, vh / 2, vw / 2 - r, vh / 2);
+  vs.lineTo(-vw / 2 + r, vh / 2); vs.quadraticCurveTo(-vw / 2, vh / 2, -vw / 2, vh / 2 - r);
+  vs.lineTo(-vw / 2, -vh / 2 + r); vs.quadraticCurveTo(-vw / 2, -vh / 2, -vw / 2 + r, -vh / 2);
+  const visor = new THREE.Mesh(new THREE.ExtrudeGeometry(vs, { depth: .03, bevelEnabled: true, bevelSize: .008, bevelThickness: .008, bevelSegments: 3 }), navy);
+  visor.position.set(0, 0, .148); head.add(visor);
+
+  const eyeGeo = new THREE.SphereGeometry(.026, 20, 16);
+  const eyes = [-1, 1].map((s) => {
+    const e = new THREE.Mesh(eyeGeo, eyeGlow);
+    e.scale.set(1, 1.35, .45); e.position.set(s * .068, .018, .19); head.add(e); return e;
+  });
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(.07, .012, .01), eyeGlow);
+  mouth.position.set(0, -.04, .19); head.add(mouth);
+
+  [-1, 1].forEach((s) => {
+    const ear = cast(new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .04, 28), violet));
+    ear.rotation.z = Math.PI / 2; ear.position.set(s * .225, 0, 0); head.add(ear);
+  });
+  const stalk = cast(new THREE.Mesh(new THREE.CylinderGeometry(.008, .008, .1, 10), navy));
+  stalk.position.y = .21; head.add(stalk);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(.03, 20, 16), pinkGlow);
+  bulb.position.y = .27; head.add(bulb);
+
+  const arms = [-1, 1].map((s) => {
+    const pivot = new THREE.Group(); pivot.position.set(s * .2, .43, 0); bodyPivot.add(pivot);
+    pivot.add(cast(new THREE.Mesh(new THREE.SphereGeometry(.05, 20, 16), violet)));
+    const arm = cast(new THREE.Mesh(new THREE.CapsuleGeometry(.036, .14, 8, 16), shell)); arm.position.y = -.11; pivot.add(arm);
+    const hand = cast(new THREE.Mesh(new THREE.SphereGeometry(.045, 20, 16), violet)); hand.position.y = -.22; pivot.add(hand);
+    pivot.rotation.z = s * .18;
+    return pivot;
+  });
+  return { root, bodyPivot, head, eyes, mouth, bulb, ring, core, armL: arms[0], armR: arms[1] };
+}
+
+function makeAnimator(R) {
+  const st = { talking: false, level: 0, enterT: -1, celebrateT: -1, waveUntil: 0 };
+  const easeOutBack = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+  let blinkAt = 1.5;
+  return {
+    state: st,
+    enter(t) { st.enterT = t; st.waveUntil = t + 3.2; },
+    wave(t, d = 2.4) { st.waveUntil = t + d; },
+    celebrate(t) { st.celebrateT = t; st.waveUntil = t + 2; },
+    talk(on) { st.talking = on; },
+    level(v) { st.level = v; },
+    update(t) {
+      let s = 1, spin = 0, rise = 0;
+      if (st.enterT >= 0) {
+        const p = Math.min(1, (t - st.enterT) / 1.1);
+        s = reduceMotion ? 1 : Math.max(.001, easeOutBack(p));
+        spin = reduceMotion ? 0 : (1 - p) * -Math.PI * 1.5;
+        rise = reduceMotion ? 0 : (1 - p) * -.25;
+      }
+      R.root.scale.setScalar(s); R.root.rotation.y = spin; R.root.position.y = rise;
+      let jump = 0;
+      if (st.celebrateT >= 0) { const c = t - st.celebrateT; if (c < 1.6) jump = Math.abs(Math.sin(c * Math.PI * 2.5)) * .12 * (1 - c / 1.6); }
+      R.bodyPivot.position.y = Math.sin(t * 2.2) * .012 + jump;
+      R.head.rotation.y = Math.sin(t * .8) * .18;
+      R.head.rotation.z = Math.sin(t * 1.1) * .04;
+      const waving = t < st.waveUntil;
+      const celebrating = st.celebrateT >= 0 && t - st.celebrateT < 1.6;
+      const tR = waving ? 2.6 + Math.sin(t * 9) * .35 : .18 + Math.sin(t * 2.2) * .04;
+      const tL = celebrating ? -2.6 - Math.sin(t * 9) * .35 : -.18 - Math.sin(t * 2.2) * .04;
+      R.armR.rotation.z += (tR - R.armR.rotation.z) * .18;
+      R.armL.rotation.z += (tL - R.armL.rotation.z) * .18;
+      if (t > blinkAt) blinkAt = t + 2.4 + Math.random() * 2.5;
+      const bl = blinkAt - t < .12 ? .12 : 1.35;
+      R.eyes.forEach((e) => { e.scale.y += (bl - e.scale.y) * .5; });
+      const m = st.level > .02 ? .6 + Math.min(1, st.level * 3) * 3.4 : st.talking ? .6 + Math.abs(Math.sin(t * 14)) * 2.6 : 1;
+      R.mouth.scale.y += (m - R.mouth.scale.y) * .4;
+      R.bulb.material.emissiveIntensity = 1 + Math.sin(t * 4) * .6;
+      R.ring.rotation.z = t * .6; R.core.rotation.z = -t * 1.2;
+    }
+  };
+}
+
+function addLights(scene, parent) {
+  scene.add(new THREE.HemisphereLight(0xf4f0ff, 0x6a5cb0, 1.6));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  Object.assign(key.shadow.camera, { left: -1, right: 1, top: 1, bottom: -1, near: .1, far: 5 });
+  key.position.set(.6, 1.6, 1.1);
+  (parent || scene).add(key); (parent || scene).add(key.target);
+  const rim = new THREE.DirectionalLight(0xa48bff, 1.2); rim.position.set(-1, .8, -1); (parent || scene).add(rim);
+}
+
+/* ---------- intro preview ---------- */
+let preview = null;
+function startPreview(canvas) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.shadowMap.enabled = true;
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(30, 1, .1, 20);
+  cam.position.set(0, .5, 2.75); cam.lookAt(0, .44, 0);
+  addLights(scene);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(.5, 48), new THREE.ShadowMaterial({ opacity: .2 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const robot = buildRobot(); scene.add(robot.root);
+  const anim = makeAnimator(robot);
+  const t0 = performance.now() / 1000; anim.enter(0);
+  let yaw = .3, drag = null;
+  canvas.addEventListener("pointerdown", (e) => { drag = e.clientX; });
+  canvas.addEventListener("pointermove", (e) => { if (drag != null) { yaw += (e.clientX - drag) * .01; drag = e.clientX; } });
+  canvas.addEventListener("pointerup", () => { drag = null; anim.wave(performance.now() / 1000 - t0, 1.6); });
+  canvas.addEventListener("pointerleave", () => { drag = null; });
+  let running = true;
+  renderer.setAnimationLoop(() => {
+    if (!running) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w && h) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    const t = performance.now() / 1000 - t0;
+    anim.update(t);
+    if (t > 1.1) robot.root.rotation.y += yaw;
+    renderer.render(scene, cam);
+  });
+  return { stop() { running = false; renderer.setAnimationLoop(null); renderer.dispose(); } };
+}
+preview = startPreview($("introCanvas"));
+
+/* =====================================================================
+   Speech
+   ===================================================================== */
+let soundOn = true, arAnim = null, clockT0 = 0;
+const nowS = () => performance.now() / 1000 - clockT0;
+/* ---------- recorded voice ---------- */
+const voice = {
+  el: null, ctx: null, an: null, buf: null, ok: !!CFG.voiceFile, playing: false,
+  unlock() {                         // must run inside the tap
+    if (!this.ok) return;
+    try {
+      this.el = new Audio(CFG.voiceFile); this.el.preload = "auto"; this.el.setAttribute("playsinline", "");
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        this.ctx = new AC();
+        const src = this.ctx.createMediaElementSource(this.el);
+        this.an = this.ctx.createAnalyser(); this.an.fftSize = 512;
+        src.connect(this.an); this.an.connect(this.ctx.destination);
+        this.buf = new Uint8Array(this.an.fftSize);
+        this.ctx.resume();
+      }
+      const p = this.el.play(); if (p) p.then(() => { this.el.pause(); this.el.currentTime = 0; }).catch(() => {});
+      this.el.addEventListener("error", () => { this.ok = false; });
+    } catch (e) { this.ok = false; }
+  },
+  async play() {
+    if (!this.ok || !this.el) return false;
+    try { this.ctx?.resume(); this.el.currentTime = 0; this.el.muted = !soundOn; await this.el.play(); this.playing = true; return true; }
+    catch (e) { return false; }
+  },
+  level() {
+    if (!this.playing || !this.an) return this.playing ? .3 + Math.random() * .3 : 0;
+    this.an.getByteTimeDomainData(this.buf);
+    let sum = 0; for (const v of this.buf) { const x = (v - 128) / 128; sum += x * x; }
+    return Math.sqrt(sum / this.buf.length);
+  }
+};
+
+function speak(text) {
+  if (voice.ok) return;               // recorded voice replaces the phone voice
+  try {
+    if (!soundOn || !("speechSynthesis" in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang = "ar-SA"; u.rate = 1;
+    const v = speechSynthesis.getVoices().find((v) => v.lang && v.lang.toLowerCase().startsWith("ar"));
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+let typeTimer = null;
+function say(text) {
+  const el = $("talkText");
+  clearInterval(typeTimer); el.textContent = "";
+  arAnim?.talk(true); speak(text);
+  if (reduceMotion) { el.textContent = text; setTimeout(() => arAnim?.talk(false), 1500); return; }
+  let i = 0;
+  typeTimer = setInterval(() => {
+    i += 1; el.textContent = text.slice(0, i);
+    if (i >= text.length) { clearInterval(typeTimer); setTimeout(() => arAnim?.talk(false), 500); }
+  }, 32);
+}
+const lines = CFG.welcome.map(fill);
+let lineIdx = -1;
+function renderDots() {
+  $("dots").replaceChildren(...lines.map((_, i) => { const d = document.createElement("i"); if (i === lineIdx) d.className = "on"; return d; }));
+}
+function nextLine() {
+  if (lineIdx >= lines.length - 1) { openRate(); return; }
+  lineIdx += 1; say(lines[lineIdx]); renderDots();
+  $("nextBtn").textContent = lineIdx === lines.length - 1 ? "قيّمي الدرس" : "التالي";
+  if (lineIdx === 1) arAnim?.wave(nowS(), 2.2);
+}
+$("nextBtn").addEventListener("click", nextLine);
+$("soundBtn").addEventListener("click", () => {
+  soundOn = !soundOn; $("soundBtn").setAttribute("aria-pressed", String(soundOn));
+  if (!soundOn) try { speechSynthesis.cancel(); } catch (e) {}
+  if (voice.el) voice.el.muted = !soundOn;
+});
+
+async function playWelcome() {
+  const started = await voice.play();
+  if (!started) { voice.ok = false; nextLine(); return; }
+  arAnim?.wave(nowS(), 2.5);
+  $("replayBtn").hidden = true;
+  $("nextBtn").hidden = true;
+  $("dots").replaceChildren();
+  const cap = fill(CFG.voiceCaption || "");
+  clearInterval(typeTimer);
+  $("talkText").textContent = "";
+  $("talkText").hidden = !cap; $("wave").hidden = !!cap;
+  if (cap) {
+    const dur = (isFinite(voice.el.duration) && voice.el.duration) || 12;
+    typeTimer = setInterval(() => {
+      const k = Math.min(1, voice.el.currentTime / dur);
+      $("talkText").textContent = cap.slice(0, Math.ceil(cap.length * k));
+    }, 60);
+  }
+  voice.el.onended = () => {
+    voice.playing = false; clearInterval(typeTimer);
+    $("wave").hidden = true; $("talkText").hidden = false;
+    lineIdx = lines.length - 1;
+    say(fill(CFG.afterVoice));
+    $("nextBtn").hidden = false; $("nextBtn").textContent = "قيّمي الدرس";
+    $("replayBtn").hidden = false;
+  };
+}
+$("replayBtn").addEventListener("click", playWelcome);
+
+/* =====================================================================
+   AR: live camera behind, robot standing in the room.
+   The phone's motion sensors keep it in its spot as the phone moves.
+   ===================================================================== */
+async function askMotionPermission() {
+  try {
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+      return (await DeviceOrientationEvent.requestPermission()) === "granted";
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+async function startAR() {
+  try { speechSynthesis.speak(new SpeechSynthesisUtterance("")); } catch (e) {}
+  voice.unlock();
+  const motionP = askMotionPermission();
+  $("loading").hidden = false;
+
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } });
+  } catch (e) { stream = null; }
+  const motionOK = await motionP;
+
+  preview?.stop(); preview = null;
+  $("intro").hidden = true;
+  const stage = $("stage");
+  if (stream) {
+    const video = document.createElement("video");
+    video.setAttribute("playsinline", ""); video.muted = true; video.autoplay = true; video.srcObject = stream;
+    Object.assign(video.style, { position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" });
+    stage.appendChild(video);
+    try { await video.play(); } catch (e) {}
+  } else {
+    toast("ما اشتغلت الكاميرا، كمّلنا بدونها");
+  }
+
+  const canvas = document.createElement("canvas");
+  Object.assign(canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", display: "block", touchAction: "none" });
+  stage.appendChild(canvas);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.shadowMap.enabled = true; renderer.setClearColor(0x000000, 0);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(62, 1, .05, 50);
+
+  const holder = new THREE.Group(); holder.position.set(0, -.72, -3.2); scene.add(holder);
+  addLights(scene, holder);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(.7, 48), new THREE.ShadowMaterial({ opacity: .35 }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = .001; shadow.receiveShadow = true; holder.add(shadow);
+  const halo = new THREE.Mesh(new THREE.RingGeometry(.42, .5, 64), new THREE.MeshBasicMaterial({ color: 0xa48bff, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide }));
+  halo.rotation.x = -Math.PI / 2; halo.position.y = .003; holder.add(halo);
+
+  const robot = buildRobot(); robot.root.scale.setScalar(.001);
+  const size = new THREE.Group(); size.scale.setScalar(1.3); size.add(robot.root); holder.add(size);
+  arAnim = makeAnimator(robot);
+
+  const Z = new THREE.Vector3(0, 0, 1), Y = new THREE.Vector3(0, 1, 0);
+  const QT = new THREE.Quaternion(-Math.sqrt(.5), 0, 0, Math.sqrt(.5));
+  const eul = new THREE.Euler(), qa = new THREE.Quaternion(), qTarget = new THREE.Quaternion(), qCam = new THREE.Quaternion(), qYaw = new THREE.Quaternion();
+  let latest = null, yaw0 = null;
+  if (motionOK) addEventListener("deviceorientation", (e) => { if (e.alpha != null || e.beta != null) latest = e; });
+  function orientQ(out, o) {
+    const d = THREE.MathUtils.degToRad;
+    const sa = d((screen.orientation && screen.orientation.angle) || window.orientation || 0);
+    eul.set(d(o.beta || 0), d(o.alpha || 0), -d(o.gamma || 0), "YXZ");
+    return out.setFromEuler(eul).multiply(QT).multiply(qa.setFromAxisAngle(Z, -sa));
+  }
+
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+  canvas.addEventListener("pointerup", (e) => {
+    const r = canvas.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, cam);
+    if (ray.intersectObject(robot.root, true).length) {
+      arAnim.wave(nowS(), 2);
+      if (voice.ok && !voice.playing && $("nextBtn").textContent === "قيّمي الدرس") playWelcome();
+    }
+  });
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight, pr = renderer.getPixelRatio();
+    if (canvas.width !== Math.round(w * pr) || canvas.height !== Math.round(h * pr)) renderer.setSize(w, h, false);
+    cam.aspect = w / h; cam.fov = w < h ? 62 : 46; cam.updateProjectionMatrix();
+  }
+
+  $("loading").hidden = true; $("hud").hidden = false;
+  clockT0 = performance.now() / 1000;
+  arAnim.enter(0);
+  $("talk").hidden = false;
+  setTimeout(() => (voice.ok ? playWelcome() : nextLine()), 1100);
+
+  renderer.setAnimationLoop(() => {
+    resize();
+    if (latest) {
+      orientQ(qTarget, latest);
+      if (yaw0 === null) { yaw0 = new THREE.Euler().setFromQuaternion(qTarget, "YXZ").y; qCam.copy(qTarget).premultiply(qYaw.setFromAxisAngle(Y, -yaw0)); }
+      qTarget.premultiply(qYaw.setFromAxisAngle(Y, -yaw0));
+      qCam.slerp(qTarget, .25); cam.quaternion.copy(qCam);
+    }
+    const t = nowS();
+    const lv = voice.level();
+    arAnim.level(lv);
+    if (!$("wave").hidden) [...$("wave").children].forEach((bar, i) => { bar.style.height = Math.max(12, Math.min(100, lv * 420 * (0.55 + 0.45 * Math.abs(Math.sin(t * 7 + i * 1.3))))) + "%"; });
+    arAnim.update(t);
+    halo.rotation.z = t * .5; halo.material.opacity = .45 + Math.sin(t * 3) * .15;
+    renderer.render(scene, cam);
+  });
+}
+$("startBtn").addEventListener("click", startAR);
+
+/* =====================================================================
+   Rating
+   ===================================================================== */
+const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>';
+const scores = CFG.criteria.map(() => 0);
+let role = "", submitted = false, summary = "";
+
+$("roleSeg").hidden = !CFG.raters.length;
+$("raterName").placeholder = CFG.raters.length ? "اسم آخر (اختياري)" : "اسمك (اختياري)";
+CFG.raters.forEach((r) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.dataset.v = r; b.textContent = r; b.setAttribute("aria-pressed", "false");
+  $("roleSeg").appendChild(b);
+});
+$("roleSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  role = b.dataset.v;
+  [...$("roleSeg").children].forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+});
+
+const critList = $("critList");
+CFG.criteria.forEach((name, ci) => {
+  const row = document.createElement("div"); row.className = "crit";
+  const label = document.createElement("span"); label.className = "name"; label.id = "crit" + ci; label.textContent = name;
+  const stars = document.createElement("div"); stars.className = "stars";
+  stars.setAttribute("role", "radiogroup"); stars.setAttribute("aria-labelledby", label.id);
+  for (let v = 1; v <= 5; v++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.innerHTML = STAR; b.id = `c${ci}s${v}`;
+    b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false"); b.setAttribute("aria-label", `${v} من 5`);
+    b.addEventListener("click", () => {
+      scores[ci] = v;
+      [...stars.children].forEach((x, k) => { x.classList.toggle("on", k < v); x.setAttribute("aria-checked", String(k + 1 === v)); });
+      $("rateErr").hidden = true;
+    });
+    stars.appendChild(b);
+  }
+  row.append(label, stars); critList.appendChild(row);
+});
+
+function resetRate() {
+  scores.fill(0); role = ""; submitted = false;
+  critList.querySelectorAll(".stars button").forEach((b) => { b.classList.remove("on"); b.setAttribute("aria-checked", "false"); });
+  [...$("roleSeg").children].forEach((x) => x.setAttribute("aria-pressed", "false"));
+  $("raterName").value = ""; $("comment").value = "";
+}
+function openRate() {
+  if (submitted) resetRate();
+  $("rate").hidden = false; $("rateForm").hidden = false; $("rateDone").hidden = true;
+  $("rateSub").textContent = "درس " + CFG.lessonTitle + (CFG.teacherName ? " — أ. " + CFG.teacherName : "") + ". ما ياخذ أكثر من دقيقة.";
+}
+const closeRate = () => { $("rate").hidden = true; };
+$("rateOpen").addEventListener("click", openRate);
+$("rateDirect").addEventListener("click", openRate);
+$("closeRate").addEventListener("click", closeRate);
+$("backAR").addEventListener("click", closeRate);
+
+const starsTxt = (v) => "★".repeat(v) + "☆".repeat(5 - v);
+$("submitRate").addEventListener("click", () => {
+  if (scores.some((v) => v === 0)) { $("rateErr").hidden = false; $("rateErr").scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const avgTxt = avg.toLocaleString("ar-SA", { maximumFractionDigits: 1 });
+  const name = $("raterName").value.trim(), comment = $("comment").value.trim();
+  const who = [role, name].filter(Boolean).join(" — ") || "—";
+  summary = [
+    `تقييم درس: ${CFG.lessonTitle}` + (CFG.teacherName ? ` (أ. ${CFG.teacherName})` : ""),
+    ...(CFG.school ? [CFG.school] : []),
+    `المقيّمة: ${who}`,
+    "",
+    ...CFG.criteria.map((c, i) => `• ${c}: ${starsTxt(scores[i])} (${scores[i]}/5)`),
+    "",
+    `التقدير العام: ${avgTxt} من 5`,
+    ...(comment ? [`ملاحظات: ${comment}`] : [])
+  ].join("\n").trim();
+
+  const card = $("resultCard"); card.replaceChildren();
+  const sc = document.createElement("div"); sc.className = "score";
+  const big = document.createElement("b"); big.className = "grad-text"; big.textContent = avgTxt;
+  const of = document.createElement("span"); of.textContent = "من ٥ — " + who;
+  sc.append(big, of);
+  const ul = document.createElement("ul");
+  CFG.criteria.forEach((c, i) => {
+    const li = document.createElement("li");
+    const a = document.createElement("span"); a.textContent = c;
+    const s = document.createElement("span"); s.textContent = starsTxt(scores[i]);
+    li.append(a, s); ul.appendChild(li);
+  });
+  card.append(sc, ul);
+  if (comment) { const p = document.createElement("p"); p.textContent = "«" + comment + "»"; card.appendChild(p); }
+
+  $("waBtn").hidden = !CFG.whatsapp;
+  sendToSheet({
+    lesson: CFG.lessonTitle,
+    teacher: CFG.teacherName,
+    role, name,
+    scores: CFG.criteria.map((c, i) => ({ name: c, value: scores[i] })),
+    average: Math.round(avg * 10) / 10,
+    comment
+  });
+  submitted = true;
+  $("rateForm").hidden = true; $("rateDone").hidden = false;
+  if (arAnim) {
+    arAnim.celebrate(nowS());
+    lineIdx = lines.length - 1;
+    say(fill(CFG.thanks));
+    $("nextBtn").textContent = "تقييم جديد";
+  }
+});
+
+function sendToSheet(data) {
+  if (!CFG.sheetURL) return;
+  // text/plain avoids a CORS preflight, which Apps Script can't answer
+  fetch(CFG.sheetURL, { method: "POST", mode: "no-cors", keepalive: true, headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(data) })
+    .then(() => toast("وصل التقييم ✓"))
+    .catch(() => toast("ما وصل التقييم، تأكدي من الإنترنت"));
+}
+
+$("waBtn").addEventListener("click", () => {
+  const url = "https://wa.me/" + CFG.whatsapp.replace(/\D/g, "") + "?text=" + encodeURIComponent(summary);
+  window.open(url, "_blank") || (location.href = url);
+});
+$("copyBtn").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(summary); toast("تم نسخ التقييم"); }
+  catch (e) {
+    const t = document.createElement("textarea"); t.value = summary; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); toast("تم نسخ التقييم"); } catch (e2) { toast("ما قدرنا ننسخ"); }
+    t.remove();
+  }
+});
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2400);
+}
+</script>
+</body>
+</html>
